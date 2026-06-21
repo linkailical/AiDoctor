@@ -92,10 +92,24 @@
         <h1>AI Doctor</h1>
         <div class="tag" id="subtitle"></div>
       </div>
-      <button class="btn ghost sm langbtn" id="lang-toggle">中文</button>
+      <div class="langbtn" style="display:flex; gap:8px;">
+        <button class="btn ghost sm" id="nav-checker"></button>
+        <button class="btn ghost sm" id="nav-dataset"></button>
+        <button class="btn ghost sm" id="lang-toggle">中文</button>
+      </div>
     </header>
 
     <div class="disclaimer" id="disclaimer-top"></div>
+
+    <!-- Dataset view -->
+    <div class="card hidden" id="dataset-view">
+      <div class="step-label">Dataset</div>
+      <h2 id="dataset-title"></h2>
+      <p class="tag" id="dataset-desc"></p>
+      <div id="dataset-body"></div>
+      <div class="section"><h4 id="dataset-related-h"></h4><ul id="dataset-related"></ul></div>
+      <div class="credit" id="dataset-extend"></div>
+    </div>
 
     <div class="card" id="step1">
       <div class="step-label">Step 1</div>
@@ -124,6 +138,7 @@
     <footer id="footer"></footer>
   </div>
 
+  <script src="data/dataset.js"></script>
   <script>
     // ===== i18n strings =================================================
     const UI = {
@@ -154,6 +169,10 @@
       resultDisc: { en: "This automated result is educational only and may be wrong. Always rely on a qualified healthcare professional for real medical decisions.",
                     zh: "此自动结果仅供教育参考，可能有误。真正的医疗决定请始终依靠合格的医疗专业人员。" },
       gallery: { en: "Reference photos (educational)", zh: "参考照片（科普）" },
+      navChecker: { en: "Checker", zh: "自查" },
+      navDataset: { en: "Dataset", zh: "数据集" },
+      datasetRelated: { en: "Related public datasets (import & annotate)", zh: "相关公开数据集（可导入并标注）" },
+      datasetExtend: { en: "Extensible: add an image to /assets and one entry in data/dataset.js — the gallery updates automatically.", zh: "可扩展：把图片放进 /assets，并在 data/dataset.js 加一条记录，画廊会自动更新。" },
       footer: { en: "AI Doctor · offline rule-based demo · for learning & portfolio purposes only.", zh: "AI Doctor · 离线规则化演示 · 仅供学习与作品集用途。" },
       sevOpts: [ { key: "mild", en: "Mild", zh: "轻" }, { key: "moderate", en: "Moderate", zh: "中" }, { key: "severe", en: "Severe", zh: "重" } ],
       durOpts: [ { key: "short", en: "Less than 3 days", zh: "少于 3 天" }, { key: "med", en: "3–7 days", zh: "3–7 天" }, { key: "long", en: "More than 7 days", zh: "超过 7 天" } ],
@@ -236,7 +255,59 @@
       $("assessment-label").textContent = t(UI.assessment);
       $("footer").textContent = t(UI.footer);
       $("lang-toggle").textContent = lang === "en" ? "中文" : "EN";
+      $("nav-checker").textContent = t(UI.navChecker);
+      $("nav-dataset").textContent = t(UI.navDataset);
       document.documentElement.lang = lang === "en" ? "en" : "zh";
+    }
+
+    // ===== Dataset view ==================================================
+    function renderDataset() {
+      const ds = window.DENTAL_DATASET;
+      if (!ds) return;
+      $("dataset-title").textContent = t(ds.name);
+      $("dataset-desc").textContent = t(ds.description);
+      $("dataset-related-h").textContent = t(UI.datasetRelated);
+      $("dataset-extend").textContent = t(UI.datasetExtend);
+
+      const body = $("dataset-body"); body.innerHTML = "";
+      ds.classes.forEach((cls) => {
+        const items = ds.items.filter((i) => i.classKey === cls.key);
+        if (!items.length) return;
+        const sec = document.createElement("div"); sec.className = "section";
+        const h = document.createElement("h4");
+        h.textContent = `${t(cls.label)} (${items.length})`;
+        sec.appendChild(h);
+        const g = document.createElement("div"); g.className = "gallery";
+        items.forEach((im) => {
+          const fig = document.createElement("figure");
+          fig.innerHTML =
+            `<img src="${im.file}" alt="${im.title}" loading="lazy">` +
+            `<figcaption><b>${im.title}</b><br>` +
+            `<a href="${im.url}" target="_blank" rel="noopener">${im.author} · ${im.license}</a></figcaption>`;
+          g.appendChild(fig);
+        });
+        sec.appendChild(g); body.appendChild(sec);
+      });
+
+      const rel = $("dataset-related"); rel.innerHTML = "";
+      (ds.related || []).forEach((r) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<a href="${r.url}" target="_blank" rel="noopener">${r.name}</a> — ${t(r.note)}`;
+        rel.appendChild(li);
+      });
+    }
+
+    function showView(which) {
+      const dataset = which === "dataset";
+      $("dataset-view").classList.toggle("hidden", !dataset);
+      ["step1", "step2", "step3"].forEach((id) => $(id).classList.toggle("hidden", dataset));
+      if (dataset) { renderDataset(); }
+      else { // back to checker — show step1 fresh
+        $("step1").classList.remove("hidden");
+        $("step2").classList.add("hidden"); $("step3").classList.add("hidden");
+      }
+      $("nav-checker").classList.toggle("btn", !dataset);
+      $("nav-dataset").classList.toggle("btn", dataset);
     }
 
     // ===== Step 1 ========================================================
@@ -353,11 +424,14 @@
       state.symptom = null; state.severity = null; state.duration = null; state.flagIdx = new Set(); state.hasResult = false;
       $("step3").classList.add("hidden"); $("step1").classList.remove("hidden"); $("step1").scrollIntoView({ behavior: "smooth", block: "start" });
     };
+    $("nav-checker").onclick = () => showView("checker");
+    $("nav-dataset").onclick = () => showView("dataset");
     $("lang-toggle").onclick = () => {
       lang = lang === "en" ? "zh" : "en";
       paintStatic(); renderSymptoms();
       if (!$("step2").classList.contains("hidden")) renderQuestions();
       if (state.hasResult && !$("step3").classList.contains("hidden")) triage();
+      if (!$("dataset-view").classList.contains("hidden")) renderDataset();
     };
 
     // ===== Init ==========================================================
