@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Doctor — Symptom Checker</title>
+  <meta name="description" content="An educational, offline symptom-checker demo. Not a substitute for professional medical advice." />
+  <style>
+    :root {
+      --bg: #0f172a; --panel: #1e293b; --panel2: #273449;
+      --text: #e2e8f0; --muted: #94a3b8; --line: #334155;
+      --teal: #14b8a6; --teal-d: #0d9488;
+      --green: #22c55e; --yellow: #eab308; --orange: #f97316; --red: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(160deg, #0b1220, #0f172a 40%); color: var(--text);
+      min-height: 100vh; line-height: 1.55;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 24px 18px 64px; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    .logo {
+      width: 44px; height: 44px; border-radius: 12px; flex: none;
+      background: linear-gradient(135deg, var(--teal), #2563eb);
+      display: grid; place-items: center; font-size: 24px;
+    }
+    h1 { font-size: 1.5rem; margin: 0; }
+    .tag { color: var(--muted); font-size: .9rem; }
+    .disclaimer {
+      background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.4);
+      color: #fecaca; border-radius: 10px; padding: 10px 14px; font-size: .85rem; margin: 16px 0 24px;
+    }
+    .card {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 16px; padding: 22px; margin-bottom: 18px;
+    }
+    .step-label { color: var(--teal); font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    h2 { font-size: 1.15rem; margin: 6px 0 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .chip {
+      background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+      border-radius: 12px; padding: 14px 12px; cursor: pointer; text-align: left;
+      font-size: .95rem; transition: .15s; display: flex; align-items: center; gap: 8px;
+    }
+    .chip:hover { border-color: var(--teal); transform: translateY(-1px); }
+    .chip .ico { font-size: 1.3rem; }
+    .q { margin-bottom: 18px; }
+    .q p { font-weight: 600; margin: 0 0 8px; }
+    .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .opt {
+      background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+      border-radius: 999px; padding: 8px 14px; cursor: pointer; font-size: .9rem; transition: .15s;
+    }
+    .opt:hover { border-color: var(--teal); }
+    .opt.sel { background: var(--teal-d); border-color: var(--teal); color: #fff; }
+    .btn {
+      background: var(--teal); color: #04201c; border: none; border-radius: 10px;
+      padding: 11px 20px; font-weight: 700; font-size: .95rem; cursor: pointer; transition: .15s;
+    }
+    .btn:hover { background: var(--teal-d); color: #fff; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+    .btn.ghost:hover { border-color: var(--teal); color: var(--text); }
+    .row { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+    .triage { border-radius: 14px; padding: 18px 20px; margin-bottom: 18px; border: 1px solid; }
+    .triage h3 { margin: 0 0 4px; font-size: 1.25rem; }
+    .triage.green  { background: rgba(34,197,94,.12);  border-color: rgba(34,197,94,.5);  color: #bbf7d0; }
+    .triage.yellow { background: rgba(234,179,8,.12);   border-color: rgba(234,179,8,.5);  color: #fef08a; }
+    .triage.orange { background: rgba(249,115,22,.12);  border-color: rgba(249,115,22,.5); color: #fed7aa; }
+    .triage.red    { background: rgba(239,68,68,.14);   border-color: rgba(239,68,68,.6);  color: #fecaca; }
+    .section h4 { margin: 18px 0 6px; font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+    .section ul { margin: 0; padding-left: 18px; }
+    .section li { margin: 3px 0; }
+    footer { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 28px; }
+    a { color: var(--teal); }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">🩺</div>
+      <div>
+        <h1>AI Doctor</h1>
+        <div class="tag">Educational symptom checker · runs fully offline in your browser</div>
+      </div>
+    </header>
+
+    <div class="disclaimer">
+      ⚠️ <b>Not medical advice.</b> This is a student-built educational demo using simple rules,
+      not a real diagnosis. In an emergency, call your local emergency number immediately.
+    </div>
+
+    <!-- STEP 1: choose symptom -->
+    <div class="card" id="step1">
+      <div class="step-label">Step 1</div>
+      <h2>What is your main symptom?</h2>
+      <div class="grid" id="symptom-grid"></div>
+    </div>
+
+    <!-- STEP 2: follow-up questions -->
+    <div class="card hidden" id="step2">
+      <div class="step-label">Step 2</div>
+      <h2 id="step2-title">A few quick questions</h2>
+      <div id="questions"></div>
+      <div class="row">
+        <button class="btn" id="assess-btn" disabled>See assessment →</button>
+        <button class="btn ghost" id="back-btn">Back</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: result -->
+    <div class="card hidden" id="step3">
+      <div class="step-label">Assessment</div>
+      <div id="result"></div>
+      <div class="row">
+        <button class="btn" id="restart-btn">Start over</button>
+      </div>
+    </div>
+
+    <footer>
+      AI Doctor · offline rule-based demo · for learning &amp; portfolio purposes only.
+    </footer>
+  </div>
+
+  <script>
+    // ---- Knowledge base -------------------------------------------------
+    // Red-flag phrases that always mean "seek emergency care now".
+    const EMERGENCY_FLAGS = [
+      "Difficulty breathing", "Chest tightness or pressure", "Confusion or fainting",
+      "Stiff neck", "Rash that does not fade when pressed", "Coughing up blood",
+      "Weakness on one side / slurred speech", "Severe, worst-ever pain",
+      "Blood in vomit or stool",
+    ];
+
+    const SYMPTOMS = {
+      fever: {
+        icon: "🌡️", label: "Fever",
+        redFlags: ["Stiff neck", "Confusion or fainting", "Difficulty breathing", "Rash that does not fade when pressed"],
+        common: ["Viral infection (cold, flu)", "Bacterial infection", "Other inflammatory causes"],
+        selfCare: ["Rest and drink plenty of fluids", "Paracetamol/ibuprofen as directed on the label", "Recheck your temperature regularly"],
+      },
+      cough: {
+        icon: "😷", label: "Cough",
+        redFlags: ["Difficulty breathing", "Coughing up blood", "Chest tightness or pressure"],
+        common: ["Common cold / viral infection", "Bronchitis", "Allergies or asthma"],
+        selfCare: ["Warm fluids and honey (if over 1 year old)", "Avoid smoke and irritants", "Rest your voice and stay hydrated"],
+      },
+      headache: {
+        icon: "🤕", label: "Headache",
+        redFlags: ["Worst-ever / sudden severe headache", "Confusion or fainting", "Weakness on one side / slurred speech", "Stiff neck"],
+        common: ["Tension headache", "Migraine", "Dehydration or eye strain"],
+        selfCare: ["Rest in a quiet, dark room", "Hydrate and eat something", "Simple pain relief as directed"],
+      },
+      "chest-pain": {
+        icon: "❤️", label: "Chest pain",
+        redFlags: ["Chest tightness or pressure", "Difficulty breathing", "Pain spreading to arm/jaw", "Confusion or fainting"],
+        common: ["Muscle strain", "Acid reflux / heartburn", "Anxiety"],
+        selfCare: ["If clearly muscular and mild, rest and avoid strain", "Do NOT ignore pressure-like pain — get checked"],
+      },
+      "abdominal-pain": {
+        icon: "🤢", label: "Abdominal pain",
+        redFlags: ["Severe, worst-ever pain", "Blood in vomit or stool", "Rigid, very tender belly", "Confusion or fainting"],
+        common: ["Indigestion / gas", "Gastroenteritis (stomach bug)", "Constipation"],
+        selfCare: ["Small sips of water, bland food", "Avoid heavy/greasy meals", "Monitor for worsening pain"],
+      },
+      "sore-throat": {
+        icon: "🗣️", label: "Sore throat",
+        redFlags: ["Difficulty breathing", "Difficulty swallowing saliva / drooling", "Muffled voice with high fever"],
+        common: ["Viral pharyngitis", "Strep throat (bacterial)", "Irritation / dryness"],
+        selfCare: ["Warm salt-water gargle", "Warm fluids, throat lozenges", "Rest and hydrate"],
+      },
+      breathing: {
+        icon: "💨", label: "Shortness of breath",
+        redFlags: ["Difficulty breathing", "Chest tightness or pressure", "Blue lips or face", "Confusion or fainting"],
+        common: ["Asthma flare", "Respiratory infection", "Anxiety / exertion"],
+        selfCare: ["Sit upright and try to stay calm", "Use a prescribed inhaler if you have one", "Seek care quickly if it persists"],
+      },
+      rash: {
+        icon: "🌸", label: "Skin rash",
+        redFlags: ["Rash that does not fade when pressed", "Difficulty breathing", "Swelling of face/lips/tongue"],
+        common: ["Allergic reaction", "Eczema / contact dermatitis", "Viral rash"],
+        selfCare: ["Avoid known triggers and scratching", "Cool compress, gentle moisturizer", "Antihistamine for mild itching if appropriate"],
+      },
+    };
+
+    // ---- App state ------------------------------------------------------
+    const state = { symptom: null, severity: null, duration: null, flags: [] };
+
+    const $ = (id) => document.getElementById(id);
+
+    // ---- Step 1: render symptom grid -----------------------------------
+    function renderSymptoms() {
+      const grid = $("symptom-grid");
+      grid.innerHTML = "";
+      Object.entries(SYMPTOMS).forEach(([key, s]) => {
+        const b = document.createElement("button");
+        b.className = "chip";
+        b.innerHTML = `<span class="ico">${s.icon}</span><span>${s.label}</span>`;
+        b.onclick = () => selectSymptom(key);
+        grid.appendChild(b);
+      });
+    }
+
+    function selectSymptom(key) {
+      state.symptom = key;
+      state.severity = null; state.duration = null; state.flags = [];
+      $("step1").classList.add("hidden");
+      $("step3").classList.add("hidden");
+      $("step2").classList.remove("hidden");
+      $("step2-title").textContent = `About your ${SYMPTOMS[key].label.toLowerCase()}`;
+      renderQuestions();
+      $("step2").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // ---- Step 2: follow-up questions ------------------------------------
+    function singleChoice(id, label, options, onPick) {
+      const wrap = document.createElement("div");
+      wrap.className = "q";
+      wrap.innerHTML = `<p>${label}</p>`;
+      const opts = document.createElement("div");
+      opts.className = "opts";
+      options.forEach((o) => {
+        const el = document.createElement("button");
+        el.className = "opt"; el.textContent = o;
+        el.onclick = () => {
+          opts.querySelectorAll(".opt").forEach((x) => x.classList.remove("sel"));
+          el.classList.add("sel"); onPick(o); checkReady();
+        };
+        opts.appendChild(el);
+      });
+      wrap.appendChild(opts);
+      return wrap;
+    }
+
+    function multiChoice(id, label, options) {
+      const wrap = document.createElement("div");
+      wrap.className = "q";
+      wrap.innerHTML = `<p>${label}</p>`;
+      const opts = document.createElement("div");
+      opts.className = "opts";
+      options.forEach((o) => {
+        const el = document.createElement("button");
+        el.className = "opt"; el.textContent = o;
+        el.onclick = () => {
+          el.classList.toggle("sel");
+          state.flags = [...opts.querySelectorAll(".opt.sel")].map((x) => x.textContent);
+          checkReady();
+        };
+        opts.appendChild(el);
+      });
+      // "None of these" clears the rest
+      const none = document.createElement("button");
+      none.className = "opt"; none.textContent = "None of these";
+      none.onclick = () => {
+        opts.querySelectorAll(".opt").forEach((x) => x.classList.remove("sel"));
+        none.classList.add("sel"); state.flags = []; checkReady();
+      };
+      opts.appendChild(none);
+      wrap.appendChild(opts);
+      return wrap;
+    }
+
+    function renderQuestions() {
+      const c = $("questions");
+      c.innerHTML = "";
+      c.appendChild(singleChoice("sev", "How severe is it?",
+        ["Mild", "Moderate", "Severe"], (v) => (state.severity = v)));
+      c.appendChild(singleChoice("dur", "How long have you had it?",
+        ["Less than 3 days", "3–7 days", "More than 7 days"], (v) => (state.duration = v)));
+      c.appendChild(multiChoice("flg", "Do you have any of these warning signs? (select all that apply)",
+        SYMPTOMS[state.symptom].redFlags));
+      state.flagsAnswered = false;
+    }
+
+    // require severity + duration; warning-signs section counts once user interacts
+    function checkReady() {
+      const ready = state.severity && state.duration;
+      $("assess-btn").disabled = !ready;
+    }
+
+    // ---- Step 3: triage logic ------------------------------------------
+    function triage() {
+      const s = SYMPTOMS[state.symptom];
+      const hasEmergency = state.flags.some((f) => EMERGENCY_FLAGS.includes(f));
+      const hasAnyFlag = state.flags.length > 0;
+
+      let level, title, advice;
+      if (hasEmergency) {
+        level = "red"; title = "Seek emergency care now";
+        advice = "Your answers include a warning sign that can be serious. Call your local emergency number or go to the nearest emergency department now.";
+      } else if (hasAnyFlag || (state.severity === "Severe")) {
+        level = "orange"; title = "See a doctor urgently (within hours)";
+        advice = "Your symptoms suggest you should be evaluated soon. Contact an urgent care clinic or your doctor today.";
+      } else if (state.duration === "More than 7 days" || state.severity === "Moderate") {
+        level = "yellow"; title = "Book a routine doctor visit";
+        advice = "This does not look like an emergency, but a clinician should review it in the next few days if it does not improve.";
+      } else {
+        level = "green"; title = "Self-care at home";
+        advice = "This looks mild. Self-care is usually reasonable — but seek help if things get worse.";
+      }
+
+      const flagsText = hasAnyFlag
+        ? `<div class="section"><h4>Warning signs you reported</h4><ul>${state.flags.map((f) => `<li>${f}</li>`).join("")}</ul></div>`
+        : "";
+
+      $("result").innerHTML = `
+        <div class="triage ${level}">
+          <h3>${title}</h3>
+          <div>${advice}</div>
+        </div>
+        <div style="color:var(--muted);font-size:.9rem;">
+          Symptom: <b>${s.label}</b> · Severity: <b>${state.severity}</b> · Duration: <b>${state.duration}</b>
+        </div>
+        ${flagsText}
+        <div class="section"><h4>What it could be (general, not a diagnosis)</h4>
+          <ul>${s.common.map((x) => `<li>${x}</li>`).join("")}</ul></div>
+        <div class="section"><h4>General self-care</h4>
+          <ul>${s.selfCare.map((x) => `<li>${x}</li>`).join("")}</ul></div>
+        <div class="section"><h4>When to get help</h4>
+          <ul><li>Symptoms get worse or new warning signs appear</li>
+              <li>You are worried, very young, elderly, pregnant, or have a chronic illness</li>
+              <li>Any of the red-flag warning signs above develop</li></ul></div>
+        <div class="disclaimer" style="margin-top:18px;">
+          This automated result is educational only and may be wrong. Always rely on a qualified
+          healthcare professional for real medical decisions.
+        </div>
+      `;
+      $("step2").classList.add("hidden");
+      $("step3").classList.remove("hidden");
+      $("step3").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // ---- Wire up --------------------------------------------------------
+    $("assess-btn").onclick = triage;
+    $("back-btn").onclick = () => {
+      $("step2").classList.add("hidden");
+      $("step1").classList.remove("hidden");
+      $("step1").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    $("restart-btn").onclick = () => {
+      state.symptom = null; state.severity = null; state.duration = null; state.flags = [];
+      $("step3").classList.add("hidden");
+      $("step1").classList.remove("hidden");
+      $("step1").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    renderSymptoms();
+  </script>
+</body>
+</html>
